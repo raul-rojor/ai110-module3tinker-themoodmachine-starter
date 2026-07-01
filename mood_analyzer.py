@@ -9,6 +9,8 @@ This class starts with very simple logic:
   - Convert that score into a mood label
 """
 
+import re
+import string
 from typing import List, Dict, Tuple, Optional
 
 from dataset import POSITIVE_WORDS, NEGATIVE_WORDS
@@ -53,6 +55,14 @@ class MoodAnalyzer:
           - Normalize repeated characters ("soooo" -> "soo")
         """
         cleaned = text.strip().lower()
+
+        # Remove punctuation.
+        cleaned = cleaned.translate(str.maketrans("", "", string.punctuation))
+
+        # Collapse any letter repeated more than twice down to two
+        # (e.g. "soooo" -> "soo").
+        cleaned = re.sub(r"(.)\1{2,}", r"\1\1", cleaned)
+
         tokens = cleaned.split()
 
         return tokens
@@ -75,6 +85,14 @@ class MoodAnalyzer:
           - Give some words higher weights than others (for example "hate" < "annoyed")
           - Treat emojis or slang (":)", "lol", "💀") as strong signals
         """
+        tokens = self.preprocess(text)
+        score = 0
+        for token in tokens:
+            if token in self.positive_words:
+                score += 1
+            elif token in self.negative_words:
+                score -= 1
+        score = score / len(tokens) if tokens else 0  # Normalize score by number of tokens
         # TODO: Implement this method.
         #   1. Call self.preprocess(text) to get tokens.
         #   2. Loop over the tokens.
@@ -83,7 +101,7 @@ class MoodAnalyzer:
         #
         # Hint: if you implement negation, you may want to look at pairs of tokens,
         # like ("not", "happy") or ("never", "fun").
-        pass
+        return score
 
     # ---------------------------------------------------------------------
     # Label prediction
@@ -110,7 +128,15 @@ class MoodAnalyzer:
         #   2. Return "positive" if the score is above 0.
         #   3. Return "negative" if the score is below 0.
         #   4. Return "neutral" otherwise.
-        pass
+        score = self.score_text(text)
+        if score > -0.1 and score < 0.1 and score != 0:
+            return "mixed"
+        elif score > 0:
+            return "positive"
+        elif score < 0:
+            return "negative"
+        else:
+            return "neutral"
 
     # ---------------------------------------------------------------------
     # Explanations (optional but recommended)
